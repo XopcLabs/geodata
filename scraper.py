@@ -5,16 +5,17 @@ import numpy as np
 import pandas as pd
 import argparse
 import time
+import os
 
 parser = argparse.ArgumentParser()
-parser.add_argument('filename', type=str)
+parser.add_argument('topicname', type=str)
 args = parser.parse_args()
 
-FILENAME = args.filename
+TOPICNAME = args.topicname
 URL = 'https://www.avito.ru/sankt-peterburg/bytovaya_tehnika/dlya_kuhni/holodilniki_i_morozilnye_kamery-ASgBAgICAkRglk_MB6BP?cd=1&pmax=6500&pmin=750&user=1'
 
 options = webdriver.ChromeOptions()
-# options.add_argument('headless')
+options.add_argument('headless')
 options.add_argument('log-level=3')
 driver = webdriver.Chrome('D:\\chromedriver.exe', options=options)
 
@@ -108,29 +109,39 @@ def get_last_page():
 
 
 if __name__ == '__main__':
+    # Loading page
     driver.get('https://www.avito.ru/')
     driver.get(URL)
 
+    # Create folder for topic
+    if not os.path.isdir(TOPICNAME):
+        os.mkdir(TOPICNAME)
+
+    # Creating emtpy dataframe
     columns = ['price', 'title', 'added_time', 'metro', 'seller_name', 'seller_rating', 'link']
     df = pd.DataFrame(columns=columns)
 
+    # Iterating over pages
     for page in range(1, get_last_page() + 1):
         print('\nPage', page, '...')
         driver.get(URL + '&p={}'.format(page))
-        time.sleep(2)
+        time.sleep(1)
+        # Iterating over links on page
         for link in get_links():
             print(link)
+            # Trying to load page for multiple times
             for _ in range(5):
                 try:
                     driver.get(link)
                     info = get_info(link)
                     df = df.append(info, ignore_index=True)
+                    # If everything is cool, break
                     break
                 except KeyboardInterrupt:
-                    df.to_csv(FILENAME, index=False)
+                    df.to_csv('{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
                     raise
                 except:
                     time.sleep(5)
-        df.to_csv(FILENAME, index=False)
+        df.to_csv('{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
             
             
