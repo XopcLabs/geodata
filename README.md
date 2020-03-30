@@ -4,7 +4,7 @@ This is my toy project to learn geographic data analysis. Currently I'm scraping
 ## Project roadmap
 * Create a scraper
     - ~~Build a basic scraper~~
-    - Add *interface* for entering link to scrape
+    - ~~Add *interface* for entering link to scrape~~
     - Function for updating existing data
 * Data cleaning
     - ~~Delete entries selling replacement parts or something else~~
