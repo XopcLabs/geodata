@@ -3,6 +3,7 @@ from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
 import numpy as np
 import pandas as pd
+from datetime import datetime
 import argparse
 import time
 import os
@@ -14,7 +15,6 @@ args = parser.parse_args()
 
 TOPICNAME = args.topicname
 URL = args.url
-# URL = 'https://www.avito.ru/sankt-peterburg/bytovaya_tehnika/dlya_kuhni/holodilniki_i_morozilnye_kamery-ASgBAgICAkRglk_MB6BP?cd=1&pmax=6500&pmin=750&user=1'
 
 options = webdriver.ChromeOptions()
 options.add_argument('headless')
@@ -88,6 +88,7 @@ def get_info(url):
         info['added_time'] = added_time
     
     info['link'] = url
+    info['parsed_at'] = datetime.now()
 
     return info
 
