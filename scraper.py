@@ -118,11 +118,13 @@ if __name__ == '__main__':
     driver.get(URL)
 
     # Create folder for topic
-    if not os.path.isdir(TOPICNAME):
-        os.mkdir(TOPICNAME)
+    if not os.path.isdir('data'):
+        os.mkdir('data')
+    if not os.path.isdir(os.path.join('data', TOPICNAME)):
+        os.mkdir(os.path.join('data', TOPICNAME))
 
     # Creating emtpy dataframe
-    columns = ['price', 'title', 'added_time', 'metro', 'seller_name', 'seller_rating', 'link']
+    columns = ['price', 'title', 'added_time', 'metro', 'seller_name', 'seller_rating', 'link', 'parsed_at']
     df = pd.DataFrame(columns=columns)
 
     # Iterating over pages
@@ -142,10 +144,10 @@ if __name__ == '__main__':
                     # If everything is cool, break
                     break
                 except KeyboardInterrupt:
-                    df.to_csv('{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
+                    df.to_csv('data/{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
                     raise
                 except:
                     time.sleep(5)
-        df.to_csv('{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
+        df.to_csv('data/{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
             
             
