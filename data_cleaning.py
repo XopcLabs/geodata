@@ -8,9 +8,11 @@ from secret import API_KEY
 
 parser = argparse.ArgumentParser()
 parser.add_argument('topicname', type=str)
+parser.add_argument('--merge', '-m', type=str, default='')
 args = parser.parse_args()
 
 TOPICNAME = args.topicname
+FILENAME = args.merge
 
 
 def filter_df(df, filter_file):
@@ -82,7 +84,11 @@ if __name__ == '__main__':
 
     # Reading dataframe
     print('Loading dataframe...')
-    df = pd.read_csv(os.path.join(topicfolder, TOPICNAME + '.csv'))
+    if FILENAME:
+        filepath = os.path.join(topicfolder, FILENAME)
+    else:
+        filepath = os.path.join(topicfolder, TOPICNAME + '.csv')
+    df = pd.read_csv(filepath)
     # Dropping NA
     print("Dropping NaN's...")
     df = df[df['price'].notna()]
@@ -101,6 +107,12 @@ if __name__ == '__main__':
     # Getting latitude and longitude using Yandex API
     print('Using Yandex API to get latitude and longitute...')
     df = geocode(df)
+    # If dataframes need to be merged
+    if FILENAME:
+        print('Merging with previous dataframe...')
+        df_ = pd.read_csv(os.path.join(topicfolder, TOPICNAME + '_.csv'))
+        df = df.append(df_, ignore_index=True)
+        os.remove(os.path.join(topicfolder, FILENAME))
     # Saving results
     print('Saving...')
-    df.to_csv(os.path.join(topicfolder, TOPICNAME + '_.csv'))
+    df.to_csv(os.path.join(topicfolder, TOPICNAME + '_.csv'), index=False)
