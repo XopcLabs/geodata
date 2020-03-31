@@ -9,12 +9,30 @@ import time
 import os
 
 parser = argparse.ArgumentParser()
-parser.add_argument('topicname', type=str)
-parser.add_argument('url', type=str)
+parser.add_argument('topicname', type=str, help='Topic name')
+parser.add_argument('--url', type=str, default='', required=False, help='Url to scrape')
+parser.add_argument('--update', '-u', type=int, default=0, help='Integer of number of consecutive duplicates met to stop updating dataset')
 args = parser.parse_args()
 
 TOPICNAME = args.topicname
 URL = args.url
+MAX_DUPLICATES = int(args.update)
+
+# Create folder for topic
+if not os.path.isdir('data'):
+    os.mkdir('data')
+if not os.path.isdir(os.path.join('data', TOPICNAME)):
+    os.mkdir(os.path.join('data', TOPICNAME))
+
+# If URL was provided from command-line, write it to a file
+if URL:
+    with open(os.path.join('data', TOPICNAME, TOPICNAME + '_link.txt'), 'w+') as f:
+        f.write(URL)
+# If URL wasn't provided, restore it from file
+else:
+    with open(os.path.join('data', TOPICNAME, TOPICNAME + '_link.txt'), 'r') as f:
+        URL = f.readline().strip()
+
 
 options = webdriver.ChromeOptions()
 options.add_argument('headless')
@@ -112,21 +130,18 @@ def get_last_page():
 
 
 if __name__ == '__main__':
-    print('...')
     # Loading page
     driver.get('https://www.avito.ru/')
     driver.get(URL)
 
-    # Create folder for topic
-    if not os.path.isdir('data'):
-        os.mkdir('data')
-    if not os.path.isdir(os.path.join('data', TOPICNAME)):
-        os.mkdir(os.path.join('data', TOPICNAME))
+    # Creating emtpy dataframe or loading from file
+    if MAX_DUPLICATES and not os.path.isfile(os.path.join('data', TOPICNAME, TOPICNAME + '.csv')):
+        columns = ['price', 'title', 'added_time', 'metro', 'seller_name', 'seller_rating', 'link', 'parsed_at']
+        df = pd.DataFrame(columns=columns)
+    else:
+        df = pd.read_csv(os.path.join('data', TOPICNAME, TOPICNAME + '.csv'))
 
-    # Creating emtpy dataframe
-    columns = ['price', 'title', 'added_time', 'metro', 'seller_name', 'seller_rating', 'link', 'parsed_at']
-    df = pd.DataFrame(columns=columns)
-
+    duplicate_counter = 0
     # Iterating over pages
     for page in range(1, get_last_page() + 1):
         print('\nPage', page, '...')
@@ -135,19 +150,31 @@ if __name__ == '__main__':
         # Iterating over links on page
         for link in get_links():
             print(link)
-            # Trying to load page for multiple times
-            for _ in range(5):
-                try:
-                    driver.get(link)
-                    info = get_info(link)
-                    df = df.append(info, ignore_index=True)
-                    # If everything is cool, break
+            if link not in df['link'].unique():
+                # Trying to load page for multiple times
+                for _ in range(5):
+                    try:
+                        driver.get(link)
+                        info = get_info(link)
+                        df = df.append(info, ignore_index=True)
+                        # Reset duplicate counter
+                        duplicate_counter = 0
+                        # If everything is cool, break
+                        break
+                    except KeyboardInterrupt:
+                        df.to_csv('data/{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
+                        raise
+                    except:
+                        time.sleep(5)
+            else:
+                # Don't update duplicate_counter on the first page
+                if page != 1:
+                    duplicate_counter += 1
+                if duplicate_counter >= MAX_DUPLICATES:
                     break
-                except KeyboardInterrupt:
-                    df.to_csv('data/{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
-                    raise
-                except:
-                    time.sleep(5)
         df.to_csv('data/{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
+        # If 10 or more consecutive duplicates
+        if duplicate_counter >= MAX_DUPLICATES:
+            break
             
             
