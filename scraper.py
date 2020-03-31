@@ -135,12 +135,16 @@ if __name__ == '__main__':
     driver.get(URL)
 
     # Creating emtpy dataframe or loading from file
-    if MAX_DUPLICATES and not os.path.isfile(os.path.join('data', TOPICNAME, TOPICNAME + '.csv')):
-        columns = ['price', 'title', 'added_time', 'metro', 'seller_name', 'seller_rating', 'link', 'parsed_at']
-        df = pd.DataFrame(columns=columns)
-    else:
+    columns = ['price', 'title', 'added_time', 'metro', 'seller_name', 'seller_rating', 'link', 'parsed_at']
+    if MAX_DUPLICATES and os.path.isfile(os.path.join('data', TOPICNAME, TOPICNAME + '.csv')):
         df = pd.read_csv(os.path.join('data', TOPICNAME, TOPICNAME + '.csv'))
+        update_df = pd.DataFrame(columns=columns)
+    elif not MAX_DUPLICATES:
+        df = pd.DataFrame(columns=columns)
 
+    if MAX_DUPLICATES:
+        now = datetime.now()
+        csv_name = 'data/{}/{}_{}-{}_{}-{}.csv'.format(TOPICNAME, TOPICNAME, now.day, now.month, now.hour, now.minute)
     duplicate_counter = 0
     # Iterating over pages
     for page in range(1, get_last_page() + 1):
@@ -156,13 +160,19 @@ if __name__ == '__main__':
                     try:
                         driver.get(link)
                         info = get_info(link)
-                        df = df.append(info, ignore_index=True)
+                        if MAX_DUPLICATES:
+                            update_df = update_df.append(info, ignore_index=True)
+                        else:
+                            df = df.append(info, ignore_index=True)
                         # Reset duplicate counter
                         duplicate_counter = 0
                         # If everything is cool, break
                         break
                     except KeyboardInterrupt:
-                        df.to_csv('data/{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
+                        if MAX_DUPLICATES:
+                            update_df.to_csv(csv_name, index=False)
+                        else:
+                            df.to_csv('data/{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
                         raise
                     except:
                         time.sleep(5)
@@ -172,7 +182,10 @@ if __name__ == '__main__':
                     duplicate_counter += 1
                 if duplicate_counter >= MAX_DUPLICATES:
                     break
-        df.to_csv('data/{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
+        if MAX_DUPLICATES:
+            update_df.to_csv(csv_name, index=False)
+        else:
+            df.to_csv('data/{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
         # If 10 or more consecutive duplicates
         if duplicate_counter >= MAX_DUPLICATES:
             break
