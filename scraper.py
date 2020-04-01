@@ -3,6 +3,7 @@ from selenium.webdriver.common.keys import Keys
 from bs4 import BeautifulSoup
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 from datetime import datetime
 import argparse
 import time
@@ -12,12 +13,14 @@ import os
 parser = argparse.ArgumentParser()
 parser.add_argument('topicname', type=str, help='Topic name')
 parser.add_argument('--url', type=str, default='', required=False, help='Url to scrape')
-parser.add_argument('--update', '-u', type=int, default=0, help='Integer of number of consecutive duplicates met to stop updating dataset')
+parser.add_argument('--update', '-u', type=int, default=None, help='Integer of number of consecutive duplicates met to stop updating dataset')
 args = parser.parse_args()
 
 TOPICNAME = args.topicname
 URL = args.url
-MAX_DUPLICATES = int(args.update)
+UPDATE = int(args.update) if args.update else None
+if UPDATE:
+    duplicate_counter = 0
 
 # Create folder for topic
 if not os.path.isdir('data'):
@@ -131,6 +134,32 @@ def get_last_page():
     return last_page
 
 
+def parse_link(link, df, update_df=None):
+    # Trying to load page for multiple times
+    for _ in range(5):
+        try:
+            driver.get(link)
+            info = get_info(link)
+            if UPDATE:
+                update_df = update_df.append(info, ignore_index=True)
+            else:
+                df = df.append(info, ignore_index=True)
+            # Reset duplicate counter
+            if UPDATE:
+                duplicate_counter = 0
+            # If everything is cool, break
+            break
+        except KeyboardInterrupt:
+            if UPDATE:
+                update_df.to_csv(csv_name, index=False)
+            else:
+                df.to_csv('data/{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
+            raise
+        except:
+            print('Sleeping...')
+            time.sleep(3)
+    return df, update_df
+
 if __name__ == '__main__':
     # Loading page
     driver.get('https://www.avito.ru/')
@@ -138,61 +167,55 @@ if __name__ == '__main__':
 
     # Creating emtpy dataframe or loading from file
     columns = ['price', 'title', 'added_time', 'metro', 'seller_name', 'seller_rating', 'link', 'parsed_at']
-    if MAX_DUPLICATES and os.path.isfile(os.path.join('data', TOPICNAME, TOPICNAME + '.csv')):
-        df = pd.read_csv(os.path.join('data', TOPICNAME, TOPICNAME + '.csv'))
+    topic_gpkg_path = os.path.join('data', TOPICNAME, TOPICNAME + '.gpkg')
+    if UPDATE and os.path.isfile(topic_gpkg_path):
+        print('\nUpdating dataset...')
+        df = gpd.read_file(topic_gpkg_path)
         update_df = pd.DataFrame(columns=columns)
-    elif not MAX_DUPLICATES:
+    elif not UPDATE:
+        print('\nScraping dataset from scratch...')
         df = pd.DataFrame(columns=columns)
 
-    if MAX_DUPLICATES:
+    # Creating path for .csv file with updated info
+    if UPDATE:
         now = datetime.now()
         csv_name = 'data/{}/update{}-{}.csv'.format(TOPICNAME, now.hour, now.minute)
-        duplicate_counter = 0
+
     # Iterating over pages
     last_page = get_last_page()
     for page in range(1, last_page + 1):
         print('\nPage {}/{}...'.format(page, last_page))
         driver.get(URL + '&p={}'.format(page))
         time.sleep(1)
+
         # Iterating over links on page
         for link in get_links():
-            print(link)
+            # Looking for link in df
             if link not in df['link'].unique():
-                # Trying to load page for multiple times
-                for _ in range(5):
-                    try:
-                        driver.get(link)
-                        info = get_info(link)
-                        if MAX_DUPLICATES:
-                            update_df = update_df.append(info, ignore_index=True)
-                        else:
-                            df = df.append(info, ignore_index=True)
-                        # Reset duplicate counter
-                        if MAX_DUPLICATES:
-                            duplicate_counter = 0
-                        # If everything is cool, break
-                        break
-                    except KeyboardInterrupt:
-                        if MAX_DUPLICATES:
-                            update_df.to_csv(csv_name, index=False)
-                        else:
-                            df.to_csv('data/{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
-                        raise
-                    except:
-                        time.sleep(5)
-            elif MAX_DUPLICATES:
+                print(link)
+                if update_df is not None:
+                    df, update_df = parse_link(link, df, update_df)
+                else:
+                    df, _ = parse_link(link, df)
+            elif UPDATE:
+                print(link, 'skip')
                 # Don't update duplicate_counter on the first page
                 if page != 1:
                     duplicate_counter += 1
-                if duplicate_counter >= MAX_DUPLICATES:
+                if duplicate_counter >= UPDATE:
                     break
-        if MAX_DUPLICATES:
+
+        # "Backup" saving
+        if UPDATE:
+            # Saving update file if it's not empty
             if len(update_df):
                 update_df.to_csv(csv_name, index=False)
         else:
+            # Saving normal file
             df.to_csv('data/{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
-        # If 10 or more consecutive duplicates
-        if MAX_DUPLICATES and duplicate_counter > MAX_DUPLICATES:
+
+        # If 10 or more consecutive duplicates, stop
+        if UPDATE and duplicate_counter > UPDATE:
             break
             
             
