@@ -149,8 +149,9 @@ if __name__ == '__main__':
         csv_name = 'data/{}/{}_{}-{}_{}-{}.csv'.format(TOPICNAME, TOPICNAME, now.day, now.month, now.hour, now.minute)
     duplicate_counter = 0
     # Iterating over pages
-    for page in range(1, get_last_page() + 1):
-        print('\nPage', page, '...')
+    last_page = get_last_page()
+    for page in range(1, last_page + 1):
+        print('\nPage {}/{}...'.format(page, last_page))
         driver.get(URL + '&p={}'.format(page))
         time.sleep(1)
         # Iterating over links on page
@@ -190,7 +191,7 @@ if __name__ == '__main__':
         else:
             df.to_csv('data/{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
         # If 10 or more consecutive duplicates
-        if duplicate_counter >= MAX_DUPLICATES:
+        if duplicate_counter > MAX_DUPLICATES:
             break
             
             
