@@ -65,20 +65,6 @@ def str_to_datetime(string_date, parsed_at):
     return datetime(2020, month, day, hour, minute) 
 
 
-def geocode(df):
-    def get_coords(x):
-        request = 'https://geocode-maps.yandex.ru/1.x/?format=json&apikey={}&geocode={}'.format(API_KEY, x.replace(' ', '+'))
-        r = requests.get(request)
-        coords = json.loads(r.text)['response']
-        coords = coords['GeoObjectCollection']['featureMember'][0]
-        coords = coords['GeoObject']['Point']['pos']
-        coords = coords.split()
-        coords = list(map(float, coords))
-        return coords
-    
-    df['coords'] = df.address.map(get_coords)
-    return df
-
 if __name__ == '__main__':
     topicfolder = os.path.join('data', TOPICNAME)
     outputfile = os.path.join(topicfolder, TOPICNAME + '.gpkg')
