@@ -104,7 +104,7 @@ if __name__ == '__main__':
         df_['parsed_at'] = pd.to_datetime(df_.parsed_at)
         df_['added_time'] = pd.to_datetime(df_.added_time)
         df = df.append(df_, ignore_index=True)
-        os.remove(os.path.join(topicfolder, FILENAME))
+    os.remove(filepath)
     # Saving results
     print('Saving...')
     df.to_file(outputfile, driver='GPKG')
