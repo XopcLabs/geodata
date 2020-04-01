@@ -13,11 +13,13 @@ import os
 parser = argparse.ArgumentParser()
 parser.add_argument('topicname', type=str, help='Topic name')
 parser.add_argument('--url', type=str, default='', required=False, help='Url to scrape')
+parser.add_argument('--flat', action='store_true', default=None)
 parser.add_argument('--update', '-u', type=int, default=None, help='Integer of number of consecutive duplicates met to stop updating dataset')
 args = parser.parse_args()
 
 TOPICNAME = args.topicname
 URL = args.url
+FLAT = args.flat
 UPDATE = int(args.update) if args.update else None
 if UPDATE:
     duplicate_counter = 0
@@ -38,6 +40,14 @@ else:
     with open(cfg_path, 'r', encoding='utf-8') as f:
         URL = yaml.load(f, Loader=yaml.FullLoader)['link']
 
+# If FLAT was provided from command-line, write it to a file
+if FLAT:
+    with open(cfg_path, 'w', encoding='utf-8') as f:
+        f.write(yaml.dump({'link': URL, 'is_flat':not FLAT is None}))
+# If URL wasn't provided, restore it from file
+else:
+    with open(cfg_path, 'r', encoding='utf-8') as f:
+        URL = yaml.load(f, Loader=yaml.FullLoader)['is_flat']
 
 options = webdriver.ChromeOptions()
 options.add_argument('headless')
@@ -109,7 +119,36 @@ def get_info(url):
     if added_time:
         added_time = added_time.text.strip()
         info['added_time'] = added_time
+    item_params = soup.find('div', {'class': 'item-params'})
     
+    if FLAT:
+        key_to_column = {
+            'Этаж': 'floor',
+            'Этажей в доме': 'max_floor',
+            'Тип дома': 'house_type',
+            'Количество комнат': 'rooms',
+            'Общая площадь':'square',
+            'Год постройки': 'year_built'
+        }
+        params = {}
+        split = item_params.text.strip().split('\n')
+        for param in split:
+            key, value = param.split(':')
+            key = key_to_column[key.strip()]
+            if key in ['floor', 'max_floor', 'year_built']:
+                value = int(value.strip())
+            elif key == 'rooms':
+                value = value.strip().lower()
+                if value == 'студии' or value == 'студия':
+                    value = 0
+                value = int(value)
+            elif key == 'square':
+                value = ''.join([c for c in value.strip() if c.isnumeric() or c == '.'])[:-1]
+                value = float(value)
+            else:
+                value = value.strip()
+            params[key] = value
+
     info['link'] = url
     info['parsed_at'] = datetime.now()
 
@@ -175,6 +214,7 @@ if __name__ == '__main__':
     elif not UPDATE:
         print('\nScraping dataset from scratch...')
         df = pd.DataFrame(columns=columns)
+        update_df = None
 
     # Creating path for .csv file with updated info
     if UPDATE:
