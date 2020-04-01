@@ -131,17 +131,20 @@ def get_info(url):
             'Общая площадь':'square',
             'Жилая площадь': 'living_square',
             'Площадь кухни': 'kitchen_square',
-            'Год постройки': 'year_built'
+            'Год постройки': 'year_built',
+            'Тип участия': 'not_built'
         }
         params = {}
-        split = item_params.text.strip().split('\n')
+        split = item_params.text.strip().split('\n') if item_params else []
         for param in split:
+            if not param.split(':')[0]:
+                continue
             key, value = param.split(':')
             key = key.strip()
             if key in key_to_column.keys():
                 key = key_to_column[key.strip()]
             else:
-                break
+                continue
             if key in ['floor', 'max_floor', 'year_built']:
                 value = int(value.strip())
             elif key == 'rooms':
@@ -152,6 +155,8 @@ def get_info(url):
             elif 'square' in key:
                 value = ''.join([c for c in value.strip() if c.isnumeric() or c == '.'])[:-1]
                 value = float(value)
+            elif key == 'not_built':
+                value = True
             else:
                 value = value.strip()
             params[key] = value
@@ -219,8 +224,8 @@ if __name__ == '__main__':
             'square','living_square','kitchen_square',
             'metro', 'floor',
             'max_floor','year_built', 'house_type',
-            'seller_name', 'seller_rating', 'link',
-            'parsed_at', 'added_time' 
+            'not_built', 'seller_name', 'seller_rating',
+            'link', 'parsed_at', 'added_time' 
             ]
     else:
         columns = ['price', 'title', 'metro', 'seller_name', 'seller_rating', 'link', 'parsed_at', 'added_time']
