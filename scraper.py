@@ -146,8 +146,8 @@ if __name__ == '__main__':
 
     if MAX_DUPLICATES:
         now = datetime.now()
-        csv_name = 'data/{}/{}_{}-{}_{}-{}.csv'.format(TOPICNAME, TOPICNAME, now.day, now.month, now.hour, now.minute)
-    duplicate_counter = 0
+        csv_name = 'data/{}/update{}-{}.csv'.format(TOPICNAME, now.hour, now.minute)
+        duplicate_counter = 0
     # Iterating over pages
     last_page = get_last_page()
     for page in range(1, last_page + 1):
@@ -168,7 +168,8 @@ if __name__ == '__main__':
                         else:
                             df = df.append(info, ignore_index=True)
                         # Reset duplicate counter
-                        duplicate_counter = 0
+                        if MAX_DUPLICATES:
+                            duplicate_counter = 0
                         # If everything is cool, break
                         break
                     except KeyboardInterrupt:
@@ -179,7 +180,7 @@ if __name__ == '__main__':
                         raise
                     except:
                         time.sleep(5)
-            else:
+            elif MAX_DUPLICATES:
                 # Don't update duplicate_counter on the first page
                 if page != 1:
                     duplicate_counter += 1
@@ -191,7 +192,7 @@ if __name__ == '__main__':
         else:
             df.to_csv('data/{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
         # If 10 or more consecutive duplicates
-        if duplicate_counter > MAX_DUPLICATES:
+        if MAX_DUPLICATES and duplicate_counter > MAX_DUPLICATES:
             break
             
             
