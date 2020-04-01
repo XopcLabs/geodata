@@ -114,6 +114,9 @@ if __name__ == '__main__':
         df = df.append(df_, ignore_index=True)
     # Deleting .csv file
     os.remove(filepath)
+
+    # Dropping duplicates
+    df = df.drop_duplicates(['title', 'seller_name', 'address'])
     
     # Saving results
     print('Saving...')
