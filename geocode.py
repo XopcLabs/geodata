@@ -5,6 +5,7 @@ import requests
 from datetime import datetime, timedelta
 import argparse
 import json
+import yaml
 import os
 from secret import API_KEY
 
@@ -17,9 +18,9 @@ TOPICNAME = args.topicname
 FILENAME = args.merge
 
 
-def filter_df(df, filter_file):
-    with open(filter_file, 'r', encoding='utf-8') as f:
-        filter_words = f.readlines()
+def filter_df(df):
+    with open(os.path.join('data', TOPICNAME, 'config.yaml'), 'r', encoding='utf-8') as f:
+        filter_words = yaml.load(f, Loader=yaml.FullLoader)['filter']
     return df[~df.title.str.lower().str.contains('|'.join(filter_words))]
 
 
@@ -84,7 +85,7 @@ if __name__ == '__main__':
     df['parsed_at'] = pd.to_datetime(df.parsed_at)
     # Filtering by list of words
     print('Filtering by title...')
-    df = filter_df(df, os.path.join(topicfolder, TOPICNAME + '_filter.txt'))
+    df = filter_df(df)
     # Converting dist_to_metro to float
     print('Converting dist_to_metro to float...')
     df['dist_to_metro'] = df['dist_to_metro'].map(dist_to_float)

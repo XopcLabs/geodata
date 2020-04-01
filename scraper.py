@@ -6,6 +6,7 @@ import pandas as pd
 from datetime import datetime
 import argparse
 import time
+import yaml
 import os
 
 parser = argparse.ArgumentParser()
@@ -25,13 +26,14 @@ if not os.path.isdir(os.path.join('data', TOPICNAME)):
     os.mkdir(os.path.join('data', TOPICNAME))
 
 # If URL was provided from command-line, write it to a file
+cfg_path = os.path.join('data', TOPICNAME, 'config.yaml')
 if URL:
-    with open(os.path.join('data', TOPICNAME, TOPICNAME + '_link.txt'), 'w+') as f:
-        f.write(URL)
+    with open(cfg_path, 'w', encoding='utf-8') as f:
+        f.write(yaml.dump({'link':URL}))
 # If URL wasn't provided, restore it from file
 else:
-    with open(os.path.join('data', TOPICNAME, TOPICNAME + '_link.txt'), 'r') as f:
-        URL = f.readline().strip()
+    with open(cfg_path, 'r', encoding='utf-8') as f:
+        URL = yaml.load(f, Loader=yaml.FullLoader)['link']
 
 
 options = webdriver.ChromeOptions()
@@ -125,8 +127,8 @@ def get_links():
 def get_last_page():
     soup = BeautifulSoup(driver.page_source, features='lxml')
     next_button = soup.find('span', {'data-marker':'pagination-button/next'})
-    last_page = next_button.find_previous_sibling('span')
-    return int(last_page.text)
+    last_page = int(next_button.find_previous_sibling('span').text) if next_button else 1
+    return last_page
 
 
 if __name__ == '__main__':
@@ -183,7 +185,8 @@ if __name__ == '__main__':
                 if duplicate_counter >= MAX_DUPLICATES:
                     break
         if MAX_DUPLICATES:
-            update_df.to_csv(csv_name, index=False)
+            if len(update_df):
+                update_df.to_csv(csv_name, index=False)
         else:
             df.to_csv('data/{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
         # If 10 or more consecutive duplicates
