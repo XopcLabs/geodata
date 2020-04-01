@@ -17,10 +17,13 @@ args = parser.parse_args()
 TOPICNAME = args.topicname
 FILENAME = args.merge
 
+with open(os.path.join('data', TOPICNAME, 'config.yaml'), 'r', encoding='utf-8') as f:
+    cfg = yaml.load(f, Loader=yaml.FullLoader)
+    is_flat = cfg['is_flat']
+    if not is_flat:
+        filter_words = cfg['exclude']
 
 def filter_df(df):
-    with open(os.path.join('data', TOPICNAME, 'config.yaml'), 'r', encoding='utf-8') as f:
-        filter_words = yaml.load(f, Loader=yaml.FullLoader)['exclude']
     return df[~df.title.str.lower().str.contains('|'.join(filter_words))]
 
 
@@ -86,9 +89,10 @@ if __name__ == '__main__':
     print('Converting parsed_at to datetime...')
     df['parsed_at'] = pd.to_datetime(df.parsed_at)
 
-    # Filtering by list of words
-    print('Filtering by title...')
-    df = filter_df(df)
+    if not is_flat:
+        # Filtering by list of words
+        print('Filtering by title...')
+        df = filter_df(df)
 
     # Converting dist_to_metro to float
     print('Converting dist_to_metro to float...')
@@ -112,11 +116,11 @@ if __name__ == '__main__':
         df_['parsed_at'] = pd.to_datetime(df_.parsed_at)
         df_['added_time'] = pd.to_datetime(df_.added_time)
         df = df.append(df_, ignore_index=True)
-    # Deleting .csv file
-    os.remove(filepath)
+        # Deleting .csv file
+        os.remove(filepath)
 
     # Dropping duplicates
-    df = df.drop_duplicates(['title', 'seller_name', 'address'])
+    df = df.drop_duplicates(['title', 'seller_name', 'address', 'metro'])
     
     # Saving results
     print('Saving...')
