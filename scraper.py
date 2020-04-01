@@ -44,10 +44,10 @@ else:
 if FLAT:
     with open(cfg_path, 'w', encoding='utf-8') as f:
         f.write(yaml.dump({'link': URL, 'is_flat':not FLAT is None}))
-# If URL wasn't provided, restore it from file
+# If FLAT wasn't provided, restore it from file
 else:
     with open(cfg_path, 'r', encoding='utf-8') as f:
-        URL = yaml.load(f, Loader=yaml.FullLoader)['is_flat']
+        FLAT = yaml.load(f, Loader=yaml.FullLoader)['is_flat']
 
 options = webdriver.ChromeOptions()
 options.add_argument('headless')
@@ -122,19 +122,26 @@ def get_info(url):
     item_params = soup.find('div', {'class': 'item-params'})
     
     if FLAT:
+        item_params = soup.find('div', {'class': 'item-params'})
         key_to_column = {
             'Этаж': 'floor',
             'Этажей в доме': 'max_floor',
             'Тип дома': 'house_type',
             'Количество комнат': 'rooms',
             'Общая площадь':'square',
+            'Жилая площадь': 'living_square',
+            'Площадь кухни': 'kitchen_square',
             'Год постройки': 'year_built'
         }
         params = {}
         split = item_params.text.strip().split('\n')
         for param in split:
             key, value = param.split(':')
-            key = key_to_column[key.strip()]
+            key = key.strip()
+            if key in key_to_column.keys():
+                key = key_to_column[key.strip()]
+            else:
+                break
             if key in ['floor', 'max_floor', 'year_built']:
                 value = int(value.strip())
             elif key == 'rooms':
@@ -142,7 +149,7 @@ def get_info(url):
                 if value == 'студии' or value == 'студия':
                     value = 0
                 value = int(value)
-            elif key == 'square':
+            elif 'square' in key:
                 value = ''.join([c for c in value.strip() if c.isnumeric() or c == '.'])[:-1]
                 value = float(value)
             else:
