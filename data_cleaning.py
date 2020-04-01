@@ -1,3 +1,5 @@
+from shapely.geometry import Point
+import geopandas as gpd
 import pandas as pd
 import requests
 from datetime import datetime, timedelta
@@ -22,7 +24,7 @@ def filter_df(df, filter_file):
 
 
 def dist_to_float(x):
-    if type(x) != str:
+    if type(x) != str or x == '':
         return x
     dist, unit = x.split()
     dist = dist.replace(',', '.')
@@ -70,17 +72,16 @@ def geocode(df):
         coords = json.loads(r.text)['response']
         coords = coords['GeoObjectCollection']['featureMember'][0]
         coords = coords['GeoObject']['Point']['pos']
-        coords = coords.split()[::-1]
+        coords = coords.split()
         coords = list(map(float, coords))
         return coords
     
     df['coords'] = df.address.map(get_coords)
-    df[['lat', 'long']] = pd.DataFrame(df.coords.values.tolist(), index=df.index)
-    df = df.drop('coords', 1)
     return df
 
 if __name__ == '__main__':
     topicfolder = os.path.join('data', TOPICNAME)
+    outputfile = os.path.join(topicfolder, TOPICNAME + '.gpkg')
 
     # Reading dataframe
     print('Loading dataframe...')
@@ -106,13 +107,18 @@ if __name__ == '__main__':
     df['added_time'] = df.apply(lambda x: str_to_datetime(x['added_time'], x['parsed_at']), axis=1)
     # Getting latitude and longitude using Yandex API
     print('Using Yandex API to get latitude and longitute...')
-    df = geocode(df)
+    geo = gpd.tools.geocode(df.address, provider='yandex', api_key=API_KEY, timeout=5)
+    df = gpd.GeoDataFrame(df)
+    df['geometry'] = geo.geometry
+    df['address'] = geo.address
     # If dataframes need to be merged
     if FILENAME:
         print('Merging with previous dataframe...')
-        df_ = pd.read_csv(os.path.join(topicfolder, TOPICNAME + '_.csv'))
+        df_ = gpd.read_file(outputfile)
+        df_['parsed_at'] = pd.to_datetime(df_.parsed_at)
+        df_['added_time'] = pd.to_datetime(df_.added_time)
         df = df.append(df_, ignore_index=True)
         os.remove(os.path.join(topicfolder, FILENAME))
     # Saving results
     print('Saving...')
-    df.to_csv(os.path.join(topicfolder, TOPICNAME + '_.csv'), index=False)
+    df.to_file(outputfile, driver='GPKG')
