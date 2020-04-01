@@ -80,7 +80,7 @@ if __name__ == '__main__':
 
     # Dropping NA
     print("Dropping NaN's...")
-    df = df[df['price'].notna()]
+    df = df[df['added_time'].notna()]
 
     # Converting parsed_at to datetime
     print('Converting parsed_at to datetime...')
@@ -112,9 +112,8 @@ if __name__ == '__main__':
         df_['parsed_at'] = pd.to_datetime(df_.parsed_at)
         df_['added_time'] = pd.to_datetime(df_.added_time)
         df = df.append(df_, ignore_index=True)
-
-    # Deleting .csv file
-    os.remove(filepath)
+        # Deleting .csv file
+        os.remove(filepath)
     
     # Saving results
     print('Saving...')
