@@ -151,7 +151,8 @@ def get_info(url):
                 value = value.strip().lower()
                 if value == 'студии' or value == 'студия':
                     value = 0
-                value = int(value)
+                value = ''.join([s for s in value if s.isnumeric()])
+                value = int(value) if value else np.nan
             elif 'square' in key:
                 value = ''.join([c for c in value.strip() if c.isnumeric() or c == '.'])[:-1]
                 value = float(value)
