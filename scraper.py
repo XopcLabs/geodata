@@ -155,6 +155,7 @@ def get_info(url):
             else:
                 value = value.strip()
             params[key] = value
+        info.update(params)
 
     info['link'] = url
     info['parsed_at'] = datetime.now()
@@ -212,7 +213,17 @@ if __name__ == '__main__':
     driver.get(URL)
 
     # Creating emtpy dataframe or loading from file
-    columns = ['price', 'title', 'added_time', 'metro', 'seller_name', 'seller_rating', 'link', 'parsed_at']
+    if FLAT:
+        columns = [
+            'price', 'title', 'rooms',
+            'square','living_square','kitchen_square',
+            'metro', 'floor',
+            'max_floor','year_built', 'house_type',
+            'seller_name', 'seller_rating', 'link',
+            'parsed_at', 'added_time' 
+            ]
+    else:
+        columns = ['price', 'title', 'metro', 'seller_name', 'seller_rating', 'link', 'parsed_at', 'added_time']
     topic_gpkg_path = os.path.join('data', TOPICNAME, TOPICNAME + '.gpkg')
     if UPDATE and os.path.isfile(topic_gpkg_path):
         print('\nUpdating dataset...')
