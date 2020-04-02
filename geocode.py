@@ -20,7 +20,7 @@ args = parser.parse_args()
 TOPICNAME = args.topicname
 FILENAME = args.merge
 
-coder = Yandex(api_key=API_KEY, timeout=5)
+coder = Yandex(api_key=API_KEY, timeout=10)
 
 with open(os.path.join('data', TOPICNAME, 'config.yaml'), 'r', encoding='utf-8') as f:
     cfg = yaml.load(f, Loader=yaml.FullLoader)
@@ -75,6 +75,7 @@ def str_to_datetime(string_date, parsed_at):
 
 
 def geocode(address):
+    address = address.iloc[0]
     if 'Санкт-Петербург' not in address:
         address = 'Санкт-Петербург, ' + address
     result = coder.geocode(address)
@@ -96,11 +97,7 @@ if __name__ == '__main__':
 
     # Dropping NA
     print("Dropping NaN's...")
-    df = df[df['added_time'].notna()]
-
-    # Converting parsed_at to datetime
-    print('Converting parsed_at to datetime...')
-    df['parsed_at'] = pd.to_datetime(df.parsed_at)
+    df = df[(df['added_time'].notna()) & (df['address'].notna())]
 
     if not is_flat:
         # Filtering by list of words
@@ -111,13 +108,20 @@ if __name__ == '__main__':
     print('Converting dist_to_metro to float...')
     df['dist_to_metro'] = df['dist_to_metro'].map(dist_to_float)
 
+    # Converting parsed_at to datetime
+    print('Converting parsed_at to datetime...')
+    df['parsed_at'] = pd.to_datetime(df.parsed_at)
+
     # Converting added_time to datetime
     print('Converting added_time to datetime...')
-    df['added_time'] = df.apply(lambda x: str_to_datetime(x['added_time'], x['parsed_at']), axis=1)
+    try:
+        df['added_time'] = pd.to_datetime(df.added_time)
+    except:
+        df['added_time'] = df.apply(lambda x: str_to_datetime(x['added_time'], x['parsed_at']), axis=1)
 
     # Getting latitude and longitude using Yandex API
     print('Using Yandex API to get latitude and longitute...')
-    df['geometry'] = df.address.map(geocode)
+    df['geometry'] = df.groupby('address')['address'].apply(geocode)
     df = df[df.geometry.notna()]
     df = gpd.GeoDataFrame(df)
 
@@ -128,8 +132,8 @@ if __name__ == '__main__':
         df_['parsed_at'] = pd.to_datetime(df_.parsed_at)
         df_['added_time'] = pd.to_datetime(df_.added_time)
         df = df.append(df_, ignore_index=True)
-        # Deleting .csv file
-        os.remove(filepath)
+    # Deleting .csv file
+    os.remove(filepath)
 
     # Dropping duplicates
     df = df.drop_duplicates(['title', 'seller_name', 'address', 'metro'])
