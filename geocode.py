@@ -1,12 +1,15 @@
 from shapely.geometry import Point
+from geopy.geocoders import Yandex
+
 import geopandas as gpd
 import pandas as pd
-import requests
+
 from datetime import datetime, timedelta
 import argparse
 import json
 import yaml
 import os
+
 from secret import API_KEY
 
 parser = argparse.ArgumentParser()
@@ -16,6 +19,8 @@ args = parser.parse_args()
 
 TOPICNAME = args.topicname
 FILENAME = args.merge
+
+coder = Yandex(api_key=API_KEY, timeout=5)
 
 with open(os.path.join('data', TOPICNAME, 'config.yaml'), 'r', encoding='utf-8') as f:
     cfg = yaml.load(f, Loader=yaml.FullLoader)
@@ -69,6 +74,14 @@ def str_to_datetime(string_date, parsed_at):
     return datetime(2020, month, day, hour, minute) 
 
 
+def geocode(address):
+    if 'Санкт-Петербург' not in address:
+        address = 'Санкт-Петербург, ' + address
+    result = coder.geocode(address)
+    if result:
+        return Point(result.latitude, result.longitude)
+
+
 if __name__ == '__main__':
     topicfolder = os.path.join('data', TOPICNAME)
     outputfile = os.path.join(topicfolder, TOPICNAME + '.gpkg')
@@ -104,10 +117,9 @@ if __name__ == '__main__':
 
     # Getting latitude and longitude using Yandex API
     print('Using Yandex API to get latitude and longitute...')
-    geo = gpd.tools.geocode(df.address, provider='yandex', api_key=API_KEY, timeout=5)
+    df['geometry'] = df.address.map(geocode)
+    df = df[df.geometry.notna()]
     df = gpd.GeoDataFrame(df)
-    df['geometry'] = geo.geometry
-    df['address'] = geo.address
 
     # If dataframes need to be merged
     if FILENAME:
