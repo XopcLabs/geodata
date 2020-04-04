@@ -151,7 +151,8 @@ def get_info(url):
                 value = value.strip().lower()
                 if value == 'студии' or value == 'студия':
                     value = 0
-                value = ''.join([s for s in value if s.isnumeric()])
+                else:
+                    value = ''.join([s for s in value if s.isnumeric()])
                 value = int(value) if value else np.nan
             elif 'square' in key:
                 value = ''.join([c for c in value.strip() if c.isnumeric() or c == '.'])[:-1]
@@ -209,6 +210,7 @@ def parse_link(link, df, update_df=None):
                 df.to_csv('data/{}/{}.csv'.format(TOPICNAME, TOPICNAME), index=False)
             raise
         except:
+            raise
             print('Sleeping...')
             time.sleep(3)
     return df, update_df
